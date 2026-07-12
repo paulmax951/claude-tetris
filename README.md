@@ -42,6 +42,7 @@ Es una versión jugable del Tetris clásico con todas las mecánicas que esperar
 - **Sistema de puntuación** clásico de Tetris (100 / 300 / 500 / 800 multiplicado por nivel).
 - **Niveles** que aumentan cada 10 líneas y aceleran la caída.
 - **Pausa** y **Game Over** con opción de reinicio.
+- **Toggle claro / oscuro**: switch en la esquina superior que cambia el tema visual. El modo oscuro es el predeterminado; la preferencia se guarda en `localStorage`.
 
 ---
 
@@ -99,11 +100,12 @@ Define la estructura visual:
 - Un título visible `<h1 class="game-title">TETRIS</h1>` sobre el tablero.
 - Un `<canvas id="board">` de **300 × 600** píxeles donde se renderiza el tablero.
 - Un panel lateral con `SCORE`, `LINES`, `LEVEL`, vista de la siguiente pieza y la lista de controles.
+- Un switch (`#theme-toggle`) junto al título para alternar entre modo oscuro y claro.
 - Un overlay para los estados **PAUSA** y **GAME OVER**.
 
 ### 2. `style.css`
 
-Aporta el aspecto visual con estética _dark / retro arcade_: fondo oscuro, tipografía monoespaciada para los marcadores y _backdrop blur_ en los overlays.
+Aporta el aspecto visual con estética _dark / retro arcade_: tipografía monoespaciada para los marcadores y _backdrop blur_ en los overlays. Los colores se definen como variables CSS (`--bg`, `--text`, `--board-bg`, etc.) en `:root` para el modo oscuro (por defecto) y se sobrescriben bajo `body.light` para el modo claro.
 
 ### 3. `game.js`
 
@@ -118,6 +120,7 @@ Contiene toda la lógica del juego. A grandes rasgos:
 - **Puntuación**: usa la tabla clásica `[0, 100, 300, 500, 800]` multiplicada por el nivel actual; el hard drop suma 2 puntos por celda recorrida y el soft drop 1 punto por fila.
 - **Nivel y velocidad**: el nivel sube cada 10 líneas; la velocidad de caída se calcula como `max(100, 1000 − (level − 1) × 90)` milisegundos.
 - **Ghost piece** (`ghostY`): proyecta la posición final de la pieza actual hacia abajo y la dibuja con `globalAlpha = 0.2`.
+- **Tema claro/oscuro** (`applyTheme`): alterna la clase `light` en `<body>` (que activa las variables CSS del tema claro), sincroniza el switch y persiste la preferencia en `localStorage` bajo la clave `tetris-theme`. El color de la cuadrícula del canvas (`drawGrid`) se toma de `GRID_COLORS[theme]` porque el canvas no puede leer variables CSS directamente.
 
 ### Flujo del juego
 
@@ -158,7 +161,7 @@ Cuando una pieza recién generada ya colisiona al aparecer (`spawn`), se dispara
 ```
 03-tetris/
 ├── index.html      # Estructura del DOM y canvas
-├── style.css       # Estilos del juego (dark theme)
+├── style.css       # Estilos del juego (temas claro / oscuro)
 ├── game.js         # Toda la lógica del Tetris (~300 líneas)
 └── README.md
 ```
