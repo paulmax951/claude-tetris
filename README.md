@@ -43,6 +43,9 @@ Es una versión jugable del Tetris clásico con todas las mecánicas que esperar
 - **Niveles** que aumentan cada 10 líneas y aceleran la caída.
 - **Pausa** y **Game Over** con opción de reinicio.
 - **Toggle claro / oscuro**: switch en la esquina superior que cambia el tema visual. El modo oscuro es el predeterminado; la preferencia se guarda en `localStorage`.
+- **Combo**: contador de encadenado de líneas — se incrementa cada vez que una pieza se fija y elimina al menos una línea, y se reinicia a `0` en cuanto una pieza se fija sin eliminar ninguna. Se muestra en el panel lateral (`COMBO`) durante la partida.
+- **Tabla de récords local**: guarda el **top 5** de puntuaciones (nombre + puntuación) en `localStorage`. Se muestra en la pantalla de inicio y en el overlay de Game Over, resaltando la fila de la partida actual si entró al top 5. Si la puntuación califica, se pide el nombre del jugador antes de guardarla. Incluye un botón para reiniciar los récords.
+- **Estadísticas históricas**: además del top 5, se guarda el **mejor combo** y el **máximo de líneas** eliminadas en una sola partida, acumulados entre todas las partidas jugadas.
 
 ---
 
@@ -99,9 +102,10 @@ Define la estructura visual:
 
 - Un título visible `<h1 class="game-title">TETRIS</h1>` sobre el tablero.
 - Un `<canvas id="board">` de **300 × 600** píxeles donde se renderiza el tablero.
-- Un panel lateral con `SCORE`, `LINES`, `LEVEL`, vista de la siguiente pieza y la lista de controles.
+- Un panel lateral con `SCORE`, `LINES`, `LEVEL`, `COMBO`, vista de la siguiente pieza y la lista de controles.
 - Un switch (`#theme-toggle`) junto al título para alternar entre modo oscuro y claro.
-- Un overlay para los estados **PAUSA** y **GAME OVER**.
+- Un overlay (`#overlay`) para los estados **PAUSA** y **GAME OVER**, con la tabla de récords, el campo para ingresar el nombre (si la puntuación califica) y el botón de reinicio de récords.
+- Una pantalla de inicio (`#start-overlay`), visible antes de la primera partida, con la tabla de récords y el botón **Jugar**.
 
 ### 2. `style.css`
 
@@ -121,12 +125,21 @@ Contiene toda la lógica del juego. A grandes rasgos:
 - **Nivel y velocidad**: el nivel sube cada 10 líneas; la velocidad de caída se calcula como `max(100, 1000 − (level − 1) × 90)` milisegundos.
 - **Ghost piece** (`ghostY`): proyecta la posición final de la pieza actual hacia abajo y la dibuja con `globalAlpha = 0.2`.
 - **Tema claro/oscuro** (`applyTheme`): alterna la clase `light` en `<body>` (que activa las variables CSS del tema claro), sincroniza el switch y persiste la preferencia en `localStorage` bajo la clave `tetris-theme`. El color de la cuadrícula del canvas (`drawGrid`) se toma de `GRID_COLORS[theme]` porque el canvas no puede leer variables CSS directamente.
+- **Combo** (`lockPiece`): cada vez que una pieza se fija (`merge` + `clearLines`), si `clearLines()` eliminó al menos una línea se incrementa `combo` y se actualiza `maxCombo` de la partida; si no eliminó ninguna, `combo` vuelve a `0`. `combo`/`maxCombo` se reinician en `init()` al empezar una partida nueva.
+- **Tabla de récords** (`loadHighScores` / `addHighScore` / `saveHighScores`): el top 5 de puntuaciones (`{ id, name, score }`) se persiste en `localStorage` bajo la clave `tetris-highscores`, ordenado de mayor a menor. `qualifiesForHighScore` decide si la puntuación de la partida actual entra al top 5; si califica, se muestra un campo de texto (`#highscore-entry`) para ingresar el nombre antes de guardarla con `saveCurrentScore`. `renderHighScoresTable` dibuja la tabla tanto en la pantalla de inicio (`#start-highscores`) como en el overlay de Game Over (`#overlay-highscores`), resaltando (`.highlight`) la fila de la entrada recién guardada.
+- **Estadísticas históricas** (`loadStats` / `saveStats` / `updateStatsIfNeeded`): el mejor combo y el máximo de líneas eliminadas en una sola partida se persisten en `localStorage` bajo la clave `tetris-stats` y se actualizan al terminar cada partida (`endGame`) si la superan.
+- **Reinicio de récords** (`resetHighScores`): borra la clave `tetris-highscores` de `localStorage`; hay un botón en la pantalla de inicio y otro en el overlay de Game Over que lo disparan (no afecta las estadísticas de mejor combo/líneas).
+- **Pantalla de inicio** (`showStartScreen`): se muestra antes de llamar a `init()` por primera vez; dibuja un tablero vacío, la tabla de récords y las estadísticas. El flag `started` bloquea los controles de juego (movimiento, rotación, pausa) hasta que se pulsa **Jugar**.
 
 ### Flujo del juego
 
 ```
+showStartScreen()                   → tablero vacío + tabla de récords (pantalla de inicio)
+  └─ click en "Jugar" → started = true → init()
+
 init()
   ├─ createBoard()                  → matriz vacía
+  ├─ combo = 0, maxCombo = 0
   ├─ next = randomPiece()
   ├─ spawn()                        → mueve next a current y genera nueva next
   └─ requestAnimationFrame(loop)
@@ -137,10 +150,16 @@ init()
      ├─ draw()  (grid + tablero + ghost + pieza actual)
      └─ requestAnimationFrame(loop)
 
-   keydown → mover / rotar / soft-drop / hard-drop / pausa
+   lockPiece()
+     ├─ merge()
+     ├─ clearLines()  → cleared
+     ├─ cleared > 0 ? combo++ (y maxCombo si corresponde) : combo = 0
+     └─ spawn()
+
+   keydown → mover / rotar / soft-drop / hard-drop / pausa (bloqueado hasta started = true)
 ```
 
-Cuando una pieza recién generada ya colisiona al aparecer (`spawn`), se dispara `endGame()` y se muestra el overlay de **Game Over**.
+Cuando una pieza recién generada ya colisiona al aparecer (`spawn`), se dispara `endGame()`: se actualizan las estadísticas históricas, y si la puntuación entra al top 5 se pide el nombre del jugador antes de guardarla en la tabla de récords. Se muestra el overlay de **Game Over** con la tabla de récords y el botón de reinicio.
 
 ---
 
@@ -180,6 +199,7 @@ Algunos parámetros fáciles de tunear en `game.js`:
 | `COLORS`       | Paleta de colores por tipo de pieza      | 7 colores             |
 | `LINE_SCORES`  | Puntos por 1, 2, 3 o 4 líneas eliminadas | `[0,100,300,500,800]` |
 | `dropInterval` | Velocidad inicial de caída en ms         | `1000`                |
+| `MAX_HIGHSCORES` | Cantidad de entradas en la tabla de récords | `5`                |
 
 > Si cambias `COLS`, `ROWS` o `BLOCK`, recuerda ajustar también `width` y `height` del `<canvas id="board">` en `index.html` para que coincida (`COLS × BLOCK` × `ROWS × BLOCK`).
 
