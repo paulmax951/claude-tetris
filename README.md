@@ -41,7 +41,8 @@ Es una versión jugable del Tetris clásico con todas las mecánicas que esperar
 - **Vista previa** de la siguiente pieza.
 - **Sistema de puntuación** clásico de Tetris (100 / 300 / 500 / 800 multiplicado por nivel).
 - **Niveles** que aumentan cada 10 líneas y aceleran la caída.
-- **Pausa** y **Game Over** con opción de reinicio.
+- **Menú de pausa** completo (tecla `P` o `Esc`): reanudar, reiniciar sin recargar la página, ver la lista de controles y elegir el nivel inicial (1–10) de la próxima partida.
+- **Game Over** con opción de reinicio.
 - **Toggle claro / oscuro**: switch en la esquina superior que cambia el tema visual. El modo oscuro es el predeterminado; la preferencia se guarda en `localStorage`.
 
 ---
@@ -85,7 +86,7 @@ Después abre `http://localhost:8000` en el navegador.
 | `↑` o `X` | Rotar la pieza en sentido horario |
 | `↓`       | Soft drop (bajar más rápido)      |
 | `Espacio` | Hard drop (caída instantánea)     |
-| `P`       | Pausar / reanudar                 |
+| `P` / `Esc` | Abrir / cerrar el menú de pausa |
 
 ---
 
@@ -101,7 +102,8 @@ Define la estructura visual:
 - Un `<canvas id="board">` de **300 × 600** píxeles donde se renderiza el tablero.
 - Un panel lateral con `SCORE`, `LINES`, `LEVEL`, vista de la siguiente pieza y la lista de controles.
 - Un switch (`#theme-toggle`) junto al título para alternar entre modo oscuro y claro.
-- Un overlay para los estados **PAUSA** y **GAME OVER**.
+- Un overlay (`#overlay`) para el estado **GAME OVER**.
+- Un overlay independiente (`#pause-menu`) para el **menú de pausa**, con dos vistas internas (`#pause-main-view` y `#pause-controls-view`) que se alternan sin cerrar el overlay.
 
 ### 2. `style.css`
 
@@ -121,6 +123,7 @@ Contiene toda la lógica del juego. A grandes rasgos:
 - **Nivel y velocidad**: el nivel sube cada 10 líneas; la velocidad de caída se calcula como `max(100, 1000 − (level − 1) × 90)` milisegundos.
 - **Ghost piece** (`ghostY`): proyecta la posición final de la pieza actual hacia abajo y la dibuja con `globalAlpha = 0.2`.
 - **Tema claro/oscuro** (`applyTheme`): alterna la clase `light` en `<body>` (que activa las variables CSS del tema claro), sincroniza el switch y persiste la preferencia en `localStorage` bajo la clave `tetris-theme`. El color de la cuadrícula del canvas (`drawGrid`) se toma de `GRID_COLORS[theme]` porque el canvas no puede leer variables CSS directamente.
+- **Menú de pausa** (`openPauseMenu` / `resumeGame` / `showPauseView`): `P` o `Esc` llaman a `togglePause()`, que abre o cierra el menú según el estado de `paused`. Mientras el menú está abierto (`paused === true`) se bloquea toda entrada de juego (movimiento, rotación, drops), igual que con la pausa original. El menú tiene dos vistas (`pause-main-view` / `pause-controls-view`) alternadas por `showPauseView()` sin ocultar el overlay. Desde el menú se puede reanudar, reiniciar (reutilizando `init()`), ver los controles o ajustar con `setStartLevel()` el nivel con el que arrancará la *próxima* partida (variable `startLevel`, 1–10, no se resetea entre partidas). `init()` usa `startLevel` para fijar `level` y calcula `dropInterval` con el mismo helper `computeDropInterval()` que usa `clearLines()`.
 
 ### Flujo del juego
 
