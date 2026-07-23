@@ -43,6 +43,7 @@ Es una versión jugable del Tetris clásico con todas las mecánicas que esperar
 - **Niveles** que aumentan cada 10 líneas y aceleran la caída.
 - **Pausa** y **Game Over** con opción de reinicio.
 - **Toggle claro / oscuro**: switch en la esquina superior que cambia el tema visual. El modo oscuro es el predeterminado; la preferencia se guarda en `localStorage`.
+- **Selector de skins**: menú desplegable en la esquina superior con cuatro estilos visuales para los bloques — **Retro** (el aspecto clásico, predeterminado), **Neon** (campo oscuro con efecto de brillo/`glow`), **Pastel** (colores suaves y esquinas redondeadas) y **Pixel art** (textura tipo cuadrícula sobre cada bloque). Se aplica en caliente sin recargar la página y la preferencia se guarda en `localStorage`. Es independiente del tema claro/oscuro: se pueden combinar libremente (p. ej. tema claro + skin neon).
 
 ---
 
@@ -101,11 +102,12 @@ Define la estructura visual:
 - Un `<canvas id="board">` de **300 × 600** píxeles donde se renderiza el tablero.
 - Un panel lateral con `SCORE`, `LINES`, `LEVEL`, vista de la siguiente pieza y la lista de controles.
 - Un switch (`#theme-toggle`) junto al título para alternar entre modo oscuro y claro.
+- Un `<select id="skin-select">` junto al switch de tema para elegir el skin visual (Retro / Neon / Pastel / Pixel art).
 - Un overlay para los estados **PAUSA** y **GAME OVER**.
 
 ### 2. `style.css`
 
-Aporta el aspecto visual con estética _dark / retro arcade_: tipografía monoespaciada para los marcadores y _backdrop blur_ en los overlays. Los colores se definen como variables CSS (`--bg`, `--text`, `--board-bg`, etc.) en `:root` para el modo oscuro (por defecto) y se sobrescriben bajo `body.light` para el modo claro.
+Aporta el aspecto visual con estética _dark / retro arcade_: tipografía monoespaciada para los marcadores y _backdrop blur_ en los overlays. Los colores se definen como variables CSS (`--bg`, `--text`, `--board-bg`, etc.) en `:root` para el modo oscuro (por defecto) y se sobrescriben bajo `body.light` para el modo claro. La clase `body.skin-neon` sobrescribe además el fondo/borde de los canvas para dar el campo oscuro del skin Neon, independientemente del tema activo.
 
 ### 3. `game.js`
 
@@ -121,6 +123,7 @@ Contiene toda la lógica del juego. A grandes rasgos:
 - **Nivel y velocidad**: el nivel sube cada 10 líneas; la velocidad de caída se calcula como `max(100, 1000 − (level − 1) × 90)` milisegundos.
 - **Ghost piece** (`ghostY`): proyecta la posición final de la pieza actual hacia abajo y la dibuja con `globalAlpha = 0.2`.
 - **Tema claro/oscuro** (`applyTheme`): alterna la clase `light` en `<body>` (que activa las variables CSS del tema claro), sincroniza el switch y persiste la preferencia en `localStorage` bajo la clave `tetris-theme`. El color de la cuadrícula del canvas (`drawGrid`) se toma de `GRID_COLORS[theme]` porque el canvas no puede leer variables CSS directamente.
+- **Skins visuales** (`applySkin`): alterna una clase `skin-<nombre>` en `<body>`, sincroniza el `<select>` y persiste la preferencia en `localStorage` bajo la clave `tetris-skin`. Es un sistema independiente y ortogonal al tema claro/oscuro (uno controla fondo/texto general, el otro solo el renderizado de los bloques). `drawBlock(context, x, y, colorIndex, size, alpha)` sigue siendo el único punto de entrada usado por el tablero, la pieza fantasma y la vista previa, pero ahora delega según el skin activo en una de cuatro funciones: `drawBlockRetro` (relleno plano, el comportamiento original), `drawBlockNeon` (paleta `NEON_COLORS` + `shadowBlur`/`shadowColor` para el brillo, sobre fondo casi negro definido en CSS con `body.skin-neon`), `drawBlockPastel` (paleta `PASTEL_COLORS` + esquinas redondeadas simuladas con `drawRoundedRect`, que usa `ctx.roundRect()` si está disponible o un `arcTo` manual como fallback) y `drawBlockPixel` (paleta `COLORS` + un patrón de cuadrícula tipo *checker* dibujado encima para dar aspecto texturizado/pixelado).
 
 ### Flujo del juego
 
@@ -180,6 +183,8 @@ Algunos parámetros fáciles de tunear en `game.js`:
 | `COLORS`       | Paleta de colores por tipo de pieza      | 7 colores             |
 | `LINE_SCORES`  | Puntos por 1, 2, 3 o 4 líneas eliminadas | `[0,100,300,500,800]` |
 | `dropInterval` | Velocidad inicial de caída en ms         | `1000`                |
+| `NEON_COLORS`  | Paleta de colores del skin Neon          | 7 colores saturados   |
+| `PASTEL_COLORS`| Paleta de colores del skin Pastel        | 7 colores suaves      |
 
 > Si cambias `COLS`, `ROWS` o `BLOCK`, recuerda ajustar también `width` y `height` del `<canvas id="board">` en `index.html` para que coincida (`COLS × BLOCK` × `ROWS × BLOCK`).
 

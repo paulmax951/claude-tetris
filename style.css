@@ -76,6 +76,37 @@ body {
   text-shadow: 0 0 20px var(--title-shadow);
 }
 
+.top-bar-controls {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+/* ---- Selector de skin ---- */
+.skin-select-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.skin-select-label {
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: var(--label-color);
+  font-weight: 600;
+}
+
+#skin-select {
+  background: var(--kbd-bg);
+  color: var(--text);
+  border: 1px solid var(--kbd-border);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
 /* ---- Toggle claro / oscuro ---- */
 .theme-toggle-wrap {
   display: flex;
@@ -181,6 +212,13 @@ body {
   background: var(--board-bg);
   border-radius: 4px;
   transition: background 0.2s, border-color 0.2s;
+}
+
+/* ---- Skin "neon": campo de juego oscuro independiente del tema claro/oscuro ---- */
+body.skin-neon #board,
+body.skin-neon #next-canvas {
+  background: #05050a;
+  border-color: #143a3a;
 }
 
 /* ---- Controles ---- */
